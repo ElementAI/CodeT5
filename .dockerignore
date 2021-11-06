@@ -1,0 +1,12 @@
+.git
+.circleco
+.github
+.idea
+.ipynb_checkpoints
+tmp
+local_data
+devel
+data
+configs
+devel
+pretrained_models

@@ -1,0 +1,61 @@
+image: registry.console.elementai.com/snow.amineelhattami/txt2flow:latest 
+data:
+    - 0330b06a-8d29-4b6f-aa27-4e89d028bace:/workspace
+    - $EXPERIMENT_DATA:/mnt/data
+
+interactive: false 
+
+resources:
+  cpu: 4
+  mem: 64 
+  gpu: 1
+
+command:
+- python 
+- -m 
+- torch.distributed.launch
+- --nproc_per_node
+- 4 
+- /app/run_hf.py
+- --model_name_or_path
+- t5-base
+- --do_train
+- true
+- --do_eval
+- true
+# - --do_predict
+# - true
+- --num_train_epochs
+- 10
+- --train_file
+- /mnt/public/datasets/abcd/train_dataset_no_promo_code.json
+- --validation_file
+- /mnt/public/datasets/abcd/dev_dataset.json
+- --test_file
+- /mnt/public/datasets/abcd/test_dataset_no_promo_code.json
+- --text_column
+- dialog
+- --summary_column
+- high_level_flow
+- --per_device_train_batch_size
+- 4
+- --per_device_eval_batch_size
+- 4
+- --predict_with_generate
+- true
+- --generate_html_preds_file
+- true
+- --generate_xl_preds_file
+- true
+- --overwrite_cache
+- true
+- --output_dir
+- /workspace/results/abcd_original
+- --save_strategy
+- no 
+- --experiment_name
+- base_t5_no_promo
+- --train_context 'enter-details, search-policy, validate-purchase, ask-the-oracle, promo-code, search-membership, select-faq, search-shirt, make-password, offer-refund, update-account,search-faq, search-boots, subscription-status, notify-team, search-jeans, record-reason, search-jacket, search-timing, send-link,pull-up-account, search-pricing, verify-identity, update-order, membership, shipping-status' 
+- --validation_context 'enter-details, search-policy, validate-purchase, ask-the-oracle, promo-code, search-membership, select-faq, search-shirt, make-password, offer-refund, update-account,search-faq, search-boots, subscription-status, notify-team, search-jeans, record-reason, search-jacket, search-timing, send-link,pull-up-account, search-pricing, verify-identity, update-order, membership, shipping-status' 
+- --test_context 'enter-details, search-policy, validate-purchase, ask-the-oracle, promo-code, search-membership, select-faq, search-shirt, make-password, offer-refund, make-purchase, instructions, update-account,search-faq, log-out-in, search-boots, subscription-status, notify-team, search-jeans, record-reason, search-jacket, search-timing, send-link,pull-up-account, search-pricing, verify-identity, update-order,try-again, membership, shipping-status' - --source_prefix 
+- "extract flow: "
