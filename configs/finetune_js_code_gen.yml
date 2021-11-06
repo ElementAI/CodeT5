@@ -1,0 +1,18 @@
+image: $IMAGE_NAME 
+data:
+    - 0330b06a-8d29-4b6f-aa27-4e89d028bace:/workspace
+    - $EXPERIMENT_DATA:/mnt/codet5
+
+interactive: false 
+preemptable: true
+
+resources:
+  cpu: 4
+  mem: 32 
+  gpu: 1
+  gpuModel: Tesla V100-SXM2-32GB 
+
+command:
+  - python
+  - finetune_code_generation.py
+  - -h

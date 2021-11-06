@@ -15,7 +15,5 @@ RUN apt update && \
 
 ADD requirements.txt /
 RUN pip3 install -r /requirements.txt 
+
 ADD . /app
-
-# RUN chmod -R 777 .
-
