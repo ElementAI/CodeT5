@@ -15,4 +15,51 @@ resources:
 command:
   - python
   - finetune_code_generation.py
-  - -h
+  - --exp_name
+  - js_finetune
+  - --task
+  - concode
+  - --sub_task
+  - javascript
+  - --model_name_or_path
+  - /mnt/codet5/pretrained_models/codet5_base
+  - --num_train_epochs
+  - 30 
+  - --warmup_steps
+  - 1000
+  - --learning_rate
+  - 10e-5
+  - --patience
+  - 3 
+  - --train_batch_size
+  - 32 
+  - --eval_batch_size
+  - 32 
+  - --max_source_length
+  - 170 
+  - --max_target_length
+  - 256
+  - --tokenizer_name
+  - roberta-base
+  - --tokenizer_path
+  - /mnt/codet5/pretrained_models/codet5_tokenizer 
+  - --do_train
+  # - do_eval
+  # - do_test
+  # - do_eval_blue
+  - --save_last_checkpoints
+  - --always_save_model
+  - --model_type
+  - codet5
+  - --data_dir
+  - /mnt/codet5/data/
+  - --output_dir
+  - /mnt/codet5/experiments/
+  - --summary_dir
+  - tensorboard
+  - --cache_path
+  - /mnt/codet5/cache
+  - --res_dir
+  - prediction 
+  - --seed
+  - 1234 

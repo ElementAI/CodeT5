@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def add_args(parser):
+    parser.add_argument("--exp_name", type=str, required=True)
     parser.add_argument("--task", type=str, required=True,
                         choices=['summarize', 'refine', 'translate', 'concode', 'clone', 'defect'])
     parser.add_argument("--sub_task", type=str, default='')

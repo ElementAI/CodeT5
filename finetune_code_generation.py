@@ -5,6 +5,8 @@ import multiprocessing
 import os
 import time
 
+from pathlib import Path
+
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
@@ -75,7 +77,7 @@ def eval_ppl_epoch(args, eval_data, eval_examples, model, tokenizer):
 
 
 def eval_bleu_epoch(
-    args, eval_data, eval_examples, model, tokenizer, split_tag, criteria
+    args, eval_data, eval_examples, model, tokenizer, split_tag, criteria, experiment_folder
 ):
     logger.info("  ***** Running bleu evaluation on {} data*****".format(split_tag))
     logger.info("  Num examples = %d", len(eval_examples))
@@ -128,9 +130,16 @@ def eval_bleu_epoch(
         for id in pred_ids
     ]
 
-    output_fn = os.path.join(args.res_dir, "test_{}.output".format(criteria))
-    gold_fn = os.path.join(args.res_dir, "test_{}.gold".format(criteria))
-    src_fn = os.path.join(args.res_dir, "test_{}.src".format(criteria))
+    results_dir = experiment_folder / args.res_dir
+    results_dir.mkdir() 
+
+    output_fn = str(results_dir / "test_{}.output".format(criteria))
+    gold_fn = str(results_dir / "test_{}.gold".format(criteria))
+    src_fn = str(results_dir / "test_{}.src".format(criteria))
+
+    # output_fn = os.path.join(args.res_dir, "test_{}.output".format(criteria))
+    # gold_fn = os.path.join(args.res_dir, "test_{}.gold".format(criteria))
+    # src_fn = os.path.join(args.res_dir, "test_{}.src".format(criteria))
 
     if args.task in ["defect"]:
         target_dict = {0: "false", 1: "true"}
@@ -182,6 +191,14 @@ def eval_bleu_epoch(
 
     return result
 
+def create_experiment_folder(args) -> Path:
+    exp_folder = Path(args.output_dir) / args.exp_name
+    if exp_folder.exists():
+        raise ValueError(f'Experiment folder exists alread: {exp_folder}')
+
+    exp_folder.mkdir()
+
+    return exp_folder
 
 def main():
     parser = argparse.ArgumentParser()
@@ -197,17 +214,21 @@ def main():
         # for DataParallel
         model = torch.nn.DataParallel(model)
     pool = multiprocessing.Pool(args.cpu_cont)
+
     args.train_filename, args.dev_filename, args.test_filename = get_filenames(
         args.data_dir, args.task, args.sub_task
     )
-    fa = open(os.path.join(args.output_dir, "summary.log"), "a+")
+
+    experiment_folder = create_experiment_folder(args)
+
+    fa = (experiment_folder / "summary.log").open('w')
+    # fa = open(os.path.join(args.output_dir, "summary.log"), "a+")
 
     if args.do_train:
         if args.local_rank in [-1, 0] and args.data_num == -1:
-            summary_fn = "{}/{}".format(
-                args.summary_dir, "/".join(args.output_dir.split("/")[1:])
-            )
-            tb_writer = SummaryWriter(summary_fn)
+            summary_path = experiment_folder / "tensorboard" 
+            summary_path.mkdir()
+            tb_writer = SummaryWriter(str(summary_path))
 
         # Prepare training data loader
         train_examples, train_data = load_and_cache_gen_data(
@@ -346,7 +367,8 @@ def main():
 
                 # save last checkpoint
                 if args.save_last_checkpoints:
-                    last_output_dir = os.path.join(args.output_dir, "checkpoint-last")
+                    last_output_dir = str(experiment_folder / "checkpoint-last") 
+                    # last_output_dir = os.path.join(args.output_dir, "checkpoint-last")
                     if not os.path.exists(last_output_dir):
                         os.makedirs(last_output_dir)
                     model_to_save = model.module if hasattr(model, "module") else model
@@ -366,7 +388,8 @@ def main():
                     best_ppl = eval_ppl
 
                     # Save best checkpoint for best ppl
-                    output_dir = os.path.join(args.output_dir, "checkpoint-best-ppl")
+                    output_dir = str(experiment_folder / "checkpoint-best-ppl") 
+                    # output_dir = os.path.join(args.output_dir, "checkpoint-best-ppl")
                     if not os.path.exists(output_dir):
                         os.makedirs(output_dir)
                     if args.always_save_model:
@@ -417,6 +440,7 @@ def main():
                         tokenizer,
                         "dev",
                         "e%d" % cur_epoch,
+                        experiment_folder,
                     )
                     dev_bleu, dev_em = result["bleu"], result["em"]
                     if args.task in ["summarize"]:
@@ -444,9 +468,12 @@ def main():
                             % (cur_epoch, best_bleu_em, dev_bleu, dev_em)
                         )
                         # Save best checkpoint for best bleu
-                        output_dir = os.path.join(
-                            args.output_dir, "checkpoint-best-bleu"
-                        )
+                        # output_dir = os.path.join(
+                        #     args.output_dir, "checkpoint-best-bleu"
+                        # )
+
+                        output_dir = str(experiment_folder / "checkpoint-best-blue") 
+
                         if not os.path.exists(output_dir):
                             os.makedirs(output_dir)
                         if args.data_num == -1 or args.always_save_model:
@@ -490,9 +517,10 @@ def main():
         logger.info("  Batch size = %d", args.eval_batch_size)
 
         for criteria in ["best-bleu", "best-ppl"]:
-            file = os.path.join(
-                args.output_dir, "checkpoint-{}/pytorch_model.bin".format(criteria)
-            )
+            file = str(experiment_folder / "checkpoint-{}/pytorch_model.bin".format(criteria))
+            # file = os.path.join(
+            #     args.output_dir, "checkpoint-{}/pytorch_model.bin".format(criteria)
+            # )
             logger.info("Reload model from {}".format(file))
             model.load_state_dict(torch.load(file))
             eval_examples, eval_data = load_and_cache_gen_data(
@@ -505,7 +533,7 @@ def main():
                 is_sample=False,
             )
             result = eval_bleu_epoch(
-                args, eval_data, eval_examples, model, tokenizer, "test", criteria
+                args, eval_data, eval_examples, model, tokenizer, "test", criteria, experiment_folder
             )
             test_bleu, test_em = result["bleu"], result["em"]
             test_codebleu = result["codebleu"] if "codebleu" in result else 0
